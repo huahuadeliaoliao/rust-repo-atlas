@@ -1,0 +1,8 @@
+interface:
+  display_name: "Rust Repo Atlas"
+  short_description: "Rust-first repo atlas for large workspaces and mixed-language codebases"
+  brand_color: "#B45309"
+  default_prompt: "Use $rust-repo-atlas when the task needs fast, evidence-backed understanding of a large Rust repository or Rust-heavy mixed-language repository, plus repo-local atlas reuse and refresh decisions."
+
+policy:
+  allow_implicit_invocation: true
