@@ -15,6 +15,9 @@ It generates an evidence-backed atlas under each target repository:
     flows.json
     playbooks.json
     evidence.json
+    crate-graph.json
+    coupling-map.json
+    impact-index.json
     diagnostics.json
 ```
 
@@ -27,6 +30,9 @@ Strong coding agents work best when they can choose their own exploration strate
 - Freshness and drift checks for repo-local atlas artifacts.
 - Rust focus root detection for mixed-language repositories.
 - Workspace, crate, entrypoint, subsystem, and flow summaries.
+- A crate-level dependency and reverse-dependency graph from Cargo metadata.
+- Coupling hints that combine real dependency edges with softer subsystem context.
+- Impact seeds that show likely affected crates before a change.
 - Evidence profiles that distinguish manifest, document, symbol, relation, query, and heuristic support.
 - Optional playbooks for orientation, localization, relation tracing, change planning, and impact analysis.
 
@@ -65,6 +71,16 @@ python3 scripts/controller.py validate --repo-root /path/to/repo
 - `deep`: currently core-plus diagnostics; reserved for future API and symbol-level analyzers.
 
 Coverage metadata is emitted in the artifacts so agents can decide whether to reuse, refresh, or verify source directly.
+
+## Impact Atlas Artifacts
+
+Rust Repo Atlas now emits three crate-level impact surfaces:
+
+- `crate-graph.json`: workspace crate nodes, Cargo dependency edges, reverse dependencies, and transitive dependency/dependent indexes.
+- `coupling-map.json`: candidate clusters and strong crate pairs, with reasons such as direct dependency edges or shared subsystem grouping.
+- `impact-index.json`: one seed per crate showing likely affected reverse dependencies, coupled neighbors, and first paths to verify.
+
+These artifacts are intentionally conservative. They describe candidate impact surfaces for agent exploration; they are not a call graph and they do not replace source or test verification.
 
 ## Benchmark Scaffold
 

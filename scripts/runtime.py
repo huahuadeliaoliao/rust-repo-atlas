@@ -398,7 +398,7 @@ def _coverage_metadata(coverage_level: str) -> dict[str, Any]:
         return {
             "level": "profile",
             "confidence": "orientation-only",
-            "complete_for": ["orientation", "workspace-localization"],
+            "complete_for": ["orientation", "workspace-localization", "basic crate dependency graph"],
             "not_complete_for": ["symbol-level relation tracing", "implementation planning"],
             "missing_capabilities": ["symbol_relation_evidence", "api_surface"],
         }
@@ -406,16 +406,28 @@ def _coverage_metadata(coverage_level: str) -> dict[str, Any]:
         return {
             "level": "deep",
             "confidence": "core-plus",
-            "complete_for": ["orientation", "workspace-localization", "subsystem navigation", "change-planning context"],
+            "complete_for": [
+                "orientation",
+                "workspace-localization",
+                "subsystem navigation",
+                "crate-level impact analysis",
+                "change-planning context",
+            ],
             "not_complete_for": ["unverified symbol-level implementation changes"],
             "missing_capabilities": ["api-level analyzers"],
         }
     return {
         "level": "core",
         "confidence": "navigation",
-        "complete_for": ["orientation", "workspace-localization", "subsystem navigation", "change-planning context"],
+        "complete_for": [
+            "orientation",
+            "workspace-localization",
+            "subsystem navigation",
+            "crate-level impact analysis",
+            "change-planning context",
+        ],
         "not_complete_for": ["unverified symbol-level implementation changes"],
-        "missing_capabilities": ["full call graph", "api-level analyzers"],
+        "missing_capabilities": ["full call graph", "api-level analyzers", "symbol-level relation extraction"],
     }
 
 
@@ -543,6 +555,294 @@ def _entrypoints(metadata: dict[str, Any], workspace_root: Path) -> list[dict[st
                 )
     entries.sort(key=lambda item: (item["kind"], item["relative_src_path"]))
     return entries[:20]
+
+
+def _workspace_package_lookup(metadata: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    members = set(metadata.get("workspace_members", []))
+    return {
+        package.get("name", ""): package
+        for package in metadata.get("packages", [])
+        if package.get("id") in members and package.get("name")
+    }
+
+
+def _subsystem_by_crate(subsystems: list[dict[str, Any]]) -> dict[str, str]:
+    index: dict[str, str] = {}
+    for subsystem in subsystems:
+        for crate_name in subsystem.get("crate_names", []):
+            index.setdefault(crate_name, subsystem.get("name", ""))
+    return index
+
+
+def _direct_dependency_maps(edges: list[dict[str, Any]]) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    direct: dict[str, set[str]] = {}
+    reverse: dict[str, set[str]] = {}
+    for edge in edges:
+        source = edge["from"]
+        target = edge["to"]
+        direct.setdefault(source, set()).add(target)
+        reverse.setdefault(target, set()).add(source)
+        direct.setdefault(target, set())
+        reverse.setdefault(source, set())
+    return (
+        {name: sorted(values) for name, values in direct.items()},
+        {name: sorted(values) for name, values in reverse.items()},
+    )
+
+
+def _transitive_closure(seed: str, graph: dict[str, list[str]]) -> list[str]:
+    seen: set[str] = set()
+    queue = list(graph.get(seed, []))
+    while queue:
+        item = queue.pop(0)
+        if item in seen or item == seed:
+            continue
+        seen.add(item)
+        queue.extend(graph.get(item, []))
+    return sorted(seen)
+
+
+def _build_crate_graph(
+    *,
+    metadata: dict[str, Any] | None,
+    workspace_root: Path,
+    crates: list[dict[str, Any]],
+    subsystems: list[dict[str, Any]],
+    coverage: dict[str, Any],
+) -> dict[str, Any]:
+    crate_names = {crate["name"] for crate in crates}
+    crate_to_subsystem = _subsystem_by_crate(subsystems)
+    nodes = [
+        {
+            "id": crate["name"],
+            "name": crate["name"],
+            "kind": crate["kind"],
+            "relative_manifest_path": crate["relative_manifest_path"],
+            "subsystem": crate_to_subsystem.get(crate["name"], ""),
+        }
+        for crate in crates
+    ]
+    edges: list[dict[str, Any]] = []
+    if metadata is not None:
+        package_by_name = _workspace_package_lookup(metadata)
+        for package_name, package in package_by_name.items():
+            for dep in package.get("dependencies", []):
+                dep_name = dep.get("name", "")
+                if dep_name not in crate_names:
+                    continue
+                dep_path = dep.get("path")
+                if dep_path:
+                    try:
+                        Path(dep_path).resolve().relative_to(workspace_root.resolve())
+                    except ValueError:
+                        continue
+                dep_kind = dep.get("kind") or "normal"
+                edges.append(
+                    {
+                        "from": package_name,
+                        "to": dep_name,
+                        "kind": dep_kind,
+                        "optional": bool(dep.get("optional", False)),
+                        "target": dep.get("target") or "",
+                        "features": sorted(dep.get("features", [])),
+                        "reason": "workspace dependency",
+                    }
+                )
+    edges.sort(key=lambda item: (item["from"], item["to"], item["kind"], item["target"]))
+    direct_dependencies, reverse_dependencies = _direct_dependency_maps(edges)
+    for crate_name in sorted(crate_names):
+        direct_dependencies.setdefault(crate_name, [])
+        reverse_dependencies.setdefault(crate_name, [])
+    transitive_dependents = {
+        crate_name: _transitive_closure(crate_name, reverse_dependencies)
+        for crate_name in sorted(crate_names)
+    }
+    transitive_dependencies = {
+        crate_name: _transitive_closure(crate_name, direct_dependencies)
+        for crate_name in sorted(crate_names)
+    }
+    return {
+        "coverage": coverage,
+        "nodes": nodes,
+        "edges": edges,
+        "direct_dependencies": direct_dependencies,
+        "reverse_dependencies": reverse_dependencies,
+        "transitive_dependencies": transitive_dependencies,
+        "transitive_dependents": transitive_dependents,
+        "graph_notes": [
+            "Edges come from Cargo workspace dependency metadata.",
+            "Use reverse dependencies as candidate impact surfaces, not as a complete call graph.",
+        ],
+    }
+
+
+def _pair_key(lhs: str, rhs: str) -> tuple[str, str]:
+    return tuple(sorted((lhs, rhs)))
+
+
+def _build_coupling_map(
+    *,
+    crate_graph: dict[str, Any],
+    subsystems: list[dict[str, Any]],
+    coverage: dict[str, Any],
+) -> dict[str, Any]:
+    crate_to_subsystem = _subsystem_by_crate(subsystems)
+    pair_reasons: dict[tuple[str, str], list[str]] = {}
+    pair_scores: dict[tuple[str, str], float] = {}
+    for edge in crate_graph.get("edges", []):
+        key = _pair_key(edge["from"], edge["to"])
+        pair_scores[key] = pair_scores.get(key, 0.0) + (3.0 if edge["kind"] == "normal" else 2.0)
+        pair_reasons.setdefault(key, []).append(f"{edge['from']} depends on {edge['to']} ({edge['kind']})")
+    for subsystem in subsystems:
+        members = [name for name in subsystem.get("crate_names", []) if name in crate_graph.get("direct_dependencies", {})]
+        for index, lhs in enumerate(members):
+            for rhs in members[index + 1 :]:
+                key = _pair_key(lhs, rhs)
+                pair_scores[key] = pair_scores.get(key, 0.0) + 1.0
+                pair_reasons.setdefault(key, []).append(f"both are in subsystem {subsystem['name']}")
+    strong_pairs = []
+    for (lhs, rhs), score in sorted(pair_scores.items(), key=lambda item: (-item[1], item[0])):
+        reasons = pair_reasons.get((lhs, rhs), [])
+        strong_pairs.append(
+            {
+                "lhs": lhs,
+                "rhs": rhs,
+                "score": round(score, 3),
+                "confidence": "high" if score >= 3.0 and any("depends on" in reason for reason in reasons) else "medium",
+                "reasons": reasons[:6],
+                "agent_note": "Candidate coupling edge; verify source and tests before implementation changes.",
+            }
+        )
+    clusters = []
+    direct_dependencies = crate_graph.get("direct_dependencies", {})
+    for subsystem in subsystems:
+        members = [name for name in subsystem.get("crate_names", []) if name in direct_dependencies]
+        internal_edges = [
+            edge
+            for edge in crate_graph.get("edges", [])
+            if edge["from"] in members and edge["to"] in members
+        ]
+        outgoing_edges = [
+            edge
+            for edge in crate_graph.get("edges", [])
+            if edge["from"] in members and edge["to"] not in members
+        ]
+        incoming_edges = [
+            edge
+            for edge in crate_graph.get("edges", [])
+            if edge["from"] not in members and edge["to"] in members
+        ]
+        if not members:
+            continue
+        clusters.append(
+            {
+                "id": f"cluster.{_safe_id(subsystem['name'])}",
+                "name": subsystem["name"],
+                "members": members,
+                "confidence": "high" if internal_edges or len(members) == 1 else "medium",
+                "coupling_reasons": [
+                    "subsystem grouping",
+                    *(
+                        ["internal Cargo dependency edges"]
+                        if internal_edges
+                        else ["no internal Cargo dependency edge detected"]
+                    ),
+                ],
+                "internal_edge_count": len(internal_edges),
+                "incoming_edge_count": len(incoming_edges),
+                "outgoing_edge_count": len(outgoing_edges),
+                "incoming_crates": sorted({edge["from"] for edge in incoming_edges}),
+                "outgoing_crates": sorted({edge["to"] for edge in outgoing_edges}),
+                "agent_note": "Cluster is a navigation hint, not an ownership boundary.",
+            }
+        )
+    return {
+        "coverage": coverage,
+        "clusters": clusters,
+        "strong_pairs": strong_pairs[:80],
+        "crate_to_subsystem": crate_to_subsystem,
+        "map_notes": [
+            "Coupling scores combine real Cargo dependency edges with soft subsystem grouping.",
+            "Use this map to choose what to inspect next; source and tests remain authoritative.",
+        ],
+    }
+
+
+def _crate_focus_path(crate_name: str, crate_index: dict[str, dict[str, Any]]) -> str:
+    crate = crate_index.get(crate_name)
+    if not crate:
+        return ""
+    return _crate_dir(crate)
+
+
+def _build_impact_index(
+    *,
+    crate_graph: dict[str, Any],
+    coupling_map: dict[str, Any],
+    crates: list[dict[str, Any]],
+    coverage: dict[str, Any],
+) -> dict[str, Any]:
+    crate_index = _crate_index(crates)
+    reverse_dependencies = crate_graph.get("reverse_dependencies", {})
+    transitive_dependents = crate_graph.get("transitive_dependents", {})
+    direct_dependencies = crate_graph.get("direct_dependencies", {})
+    strong_neighbors: dict[str, list[dict[str, Any]]] = {}
+    for pair in coupling_map.get("strong_pairs", []):
+        strong_neighbors.setdefault(pair["lhs"], []).append({"crate": pair["rhs"], "score": pair["score"], "reasons": pair["reasons"]})
+        strong_neighbors.setdefault(pair["rhs"], []).append({"crate": pair["lhs"], "score": pair["score"], "reasons": pair["reasons"]})
+    seeds = []
+    for crate in crates:
+        name = crate["name"]
+        direct = reverse_dependencies.get(name, [])
+        transitive = [item for item in transitive_dependents.get(name, []) if item not in direct]
+        dependencies = direct_dependencies.get(name, [])
+        neighbors = sorted(strong_neighbors.get(name, []), key=lambda item: (-item["score"], item["crate"]))[:8]
+        verify_first = [
+            path
+            for path in [
+                _crate_focus_path(name, crate_index),
+                *[_crate_focus_path(item, crate_index) for item in direct[:6]],
+            ]
+            if path
+        ]
+        likely_affected = [
+            {"target": item, "reason": "direct reverse dependency", "confidence": "high"}
+            for item in direct
+        ] + [
+            {"target": item, "reason": "transitive reverse dependency", "confidence": "medium"}
+            for item in transitive[:12]
+        ]
+        seeds.append(
+            {
+                "target": name,
+                "change_types": ["public-api", "trait-or-type-contract", "feature-or-dependency-change"],
+                "likely_affected": likely_affected,
+                "direct_dependencies": dependencies,
+                "coupled_neighbors": neighbors,
+                "verify_first": verify_first,
+                "impact_radius": {
+                    "direct_reverse_dependencies": len(direct),
+                    "transitive_reverse_dependencies": len(transitive),
+                    "strong_coupling_neighbors": len(neighbors),
+                },
+                "agent_note": "Candidate impact surface derived from Cargo dependencies and coupling hints; verify source before editing.",
+            }
+        )
+    seeds.sort(
+        key=lambda item: (
+            -item["impact_radius"]["direct_reverse_dependencies"],
+            -item["impact_radius"]["transitive_reverse_dependencies"],
+            item["target"],
+        )
+    )
+    return {
+        "coverage": coverage,
+        "seeds": seeds,
+        "index_notes": [
+            "Likely affected crates are reverse dependencies, not guaranteed runtime callers.",
+            "For API or trait changes, inspect direct reverse dependencies before transitive dependents.",
+        ],
+    }
 
 
 def _infer_repo_archetype(repo_name: str, workspace_kind: str, language_context: list[str], crate_count: int) -> str:
@@ -1867,7 +2167,7 @@ def _playbooks_for_repo(repo_name: str, binding: dict[str, Any], coverage_level:
             "id": "playbook.localization",
             "task_type": "localization",
             "when_to_use": "Need to find the right crate, manifest, or entrypoint before deeper reading.",
-            "read_order": ["repo-profile.json", "flows.json", "evidence.json"],
+            "read_order": ["repo-profile.json", "crate-graph.json", "flows.json", "evidence.json"],
             "queries": ["locate workspace members", "find entrypoint targets", "inspect subsystem buckets"],
             "pitfalls": ["confusing facade crates with implementation crates", "treating examples as core entrypoints"],
         },
@@ -1875,7 +2175,7 @@ def _playbooks_for_repo(repo_name: str, binding: dict[str, Any], coverage_level:
             "id": "playbook.relation-tracing",
             "task_type": "relation-tracing",
             "when_to_use": "Need to understand the main architectural or dependency paths.",
-            "read_order": ["global-model.json", "flows.json", "evidence.json"],
+            "read_order": ["global-model.json", "crate-graph.json", "coupling-map.json", "flows.json", "evidence.json"],
             "queries": ["trace workspace containment", "trace subsystem grouping", "verify claims against evidence"],
             "pitfalls": ["over-trusting shallow profile coverage", "skipping source verification for high-risk claims"],
         },
@@ -1883,7 +2183,7 @@ def _playbooks_for_repo(repo_name: str, binding: dict[str, Any], coverage_level:
             "id": "playbook.change-planning",
             "task_type": "change-planning",
             "when_to_use": "Need to plan a change after the initial atlas orientation.",
-            "read_order": ["repo-profile.json", "global-model.json", "flows.json", "evidence.json"],
+            "read_order": ["repo-profile.json", "crate-graph.json", "impact-index.json", "global-model.json", "flows.json", "evidence.json"],
             "queries": ["identify likely owning crates", "find relevant targets", "check whether refresh is still needed"],
             "pitfalls": ["assuming profile coverage is enough for implementation", "ignoring stale atlas indicators"],
         },
@@ -1891,9 +2191,9 @@ def _playbooks_for_repo(repo_name: str, binding: dict[str, Any], coverage_level:
             "id": "playbook.impact-analysis",
             "task_type": "impact-analysis",
             "when_to_use": "Need to estimate which subsystems or crates a change could affect.",
-            "read_order": ["flows.json", "global-model.json", "evidence.json"],
-            "queries": ["inspect subsystem groups", "inspect entrypoints", "follow workspace containment"],
-            "pitfalls": ["treating subsystem groups as full call graphs", "failing to refresh after repo drift"],
+            "read_order": ["impact-index.json", "crate-graph.json", "coupling-map.json", "flows.json", "global-model.json", "evidence.json"],
+            "queries": ["inspect reverse dependencies", "inspect strong coupling pairs", "follow subsystem and flow context"],
+            "pitfalls": ["treating crate dependency edges as a full call graph", "failing to refresh after repo drift"],
         },
     ]
     if repo_name == "burn":
@@ -1999,6 +2299,9 @@ def _validate_bundle(bundle_dir: Path) -> dict[str, Any]:
         "flows.json",
         "playbooks.json",
         "evidence.json",
+        "crate-graph.json",
+        "coupling-map.json",
+        "impact-index.json",
         "diagnostics.json",
     ]
     missing = [name for name in required_files if not (bundle_dir / name).exists()]
@@ -2048,6 +2351,9 @@ def _validate_bundle(bundle_dir: Path) -> dict[str, Any]:
     repo_profile = parsed.get("repo-profile.json", {})
     diagnostics = parsed.get("diagnostics.json", {})
     global_model = parsed.get("global-model.json", {})
+    crate_graph = parsed.get("crate-graph.json", {})
+    coupling_map = parsed.get("coupling-map.json", {})
+    impact_index = parsed.get("impact-index.json", {})
     if repo_profile and diagnostics:
         stats = diagnostics.get("workspace_stats", {})
         if stats.get("crate_count") not in (None, len(repo_profile.get("crates", []))):
@@ -2056,6 +2362,12 @@ def _validate_bundle(bundle_dir: Path) -> dict[str, Any]:
             metadata_errors.append("Diagnostics entrypoint_count does not match repo-profile entrypoints.")
         if stats.get("subsystem_count") not in (None, len(global_model.get("subsystems", []))):
             metadata_errors.append("Diagnostics subsystem_count does not match global-model subsystems.")
+        if crate_graph and stats.get("dependency_edge_count") not in (None, len(crate_graph.get("edges", []))):
+            metadata_errors.append("Diagnostics dependency_edge_count does not match crate-graph edges.")
+        if coupling_map and stats.get("coupling_cluster_count") not in (None, len(coupling_map.get("clusters", []))):
+            metadata_errors.append("Diagnostics coupling_cluster_count does not match coupling-map clusters.")
+        if impact_index and stats.get("impact_seed_count") not in (None, len(impact_index.get("seeds", []))):
+            metadata_errors.append("Diagnostics impact_seed_count does not match impact-index seeds.")
     is_valid = not missing and not invalid_json and not metadata_errors
     return {
         "bundle_path": str(bundle_dir.resolve()),
@@ -2182,6 +2494,24 @@ class AtlasRuntime:
         )
         playbook_items = _playbooks_for_repo(repo_family_info["name"], state["binding"], coverage_level)
         subsystems = semantic["subsystems"]
+        crate_graph_body = _build_crate_graph(
+            metadata=metadata,
+            workspace_root=Path(state["binding"]["workspace_root"]),
+            crates=crates,
+            subsystems=subsystems,
+            coverage=coverage,
+        )
+        coupling_map_body = _build_coupling_map(
+            crate_graph=crate_graph_body,
+            subsystems=subsystems,
+            coverage=coverage,
+        )
+        impact_index_body = _build_impact_index(
+            crate_graph=crate_graph_body,
+            coupling_map=coupling_map_body,
+            crates=crates,
+            coverage=coverage,
+        )
         repo_profile = {
             **header,
             "repo_name": repo_name,
@@ -2226,6 +2556,18 @@ class AtlasRuntime:
             "coverage": coverage,
             "evidence": semantic["evidence"],
         }
+        crate_graph = {
+            **header,
+            **crate_graph_body,
+        }
+        coupling_map = {
+            **header,
+            **coupling_map_body,
+        }
+        impact_index = {
+            **header,
+            **impact_index_body,
+        }
         diagnostics = {
             **header,
             "coverage_level": coverage_level,
@@ -2252,6 +2594,9 @@ class AtlasRuntime:
                 "crate_count": len(crates),
                 "entrypoint_count": len(entrypoints),
                 "subsystem_count": len(subsystems),
+                "dependency_edge_count": len(crate_graph_body.get("edges", [])),
+                "coupling_cluster_count": len(coupling_map_body.get("clusters", [])),
+                "impact_seed_count": len(impact_index_body.get("seeds", [])),
             },
         }
         manifest = {
@@ -2277,6 +2622,9 @@ class AtlasRuntime:
                     "flows.json",
                     "playbooks.json",
                     "evidence.json",
+                    "crate-graph.json",
+                    "coupling-map.json",
+                    "impact-index.json",
                     "diagnostics.json",
                 ],
             },
@@ -2316,6 +2664,9 @@ class AtlasRuntime:
         write_json(bundle_dir / "flows.json", flows)
         write_json(bundle_dir / "playbooks.json", playbooks)
         write_json(bundle_dir / "evidence.json", evidence)
+        write_json(bundle_dir / "crate-graph.json", crate_graph)
+        write_json(bundle_dir / "coupling-map.json", coupling_map)
+        write_json(bundle_dir / "impact-index.json", impact_index)
         write_json(bundle_dir / "diagnostics.json", diagnostics)
         (bundle_dir / "overview.md").write_text("\n".join(overview_lines) + "\n", encoding="utf-8")
         (bundle_dir / "rendered" / "global-model.md").write_text(_render_global_model_md(global_model), encoding="utf-8")

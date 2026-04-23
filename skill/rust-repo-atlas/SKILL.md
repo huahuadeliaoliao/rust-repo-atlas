@@ -27,7 +27,8 @@ Prefer using atlas outputs as:
 
 - a first-pass context sampler for large Rust repositories
 - a freshness and drift instrument
-- a map of likely subsystems, candidate roots, and evidence-backed claims
+- a map of likely subsystems, candidate roots, coupling edges, and evidence-backed claims
+- a crate-level impact surface for reverse dependencies and coupled neighbors
 - a prompt to verify source when a claim only has manifest, doc, or heuristic support
 
 Avoid treating atlas outputs as:
@@ -45,6 +46,7 @@ Avoid treating atlas outputs as:
 4. Reuse a fresh atlas by reading:
    `overview.md` -> `repo-profile.json` -> `global-model.json`
 5. For narrow questions, continue into:
+   `crate-graph.json` -> `coupling-map.json` -> `impact-index.json` ->
    `flows.json` -> `playbooks.json` -> `evidence.json`
 6. If the atlas is stale or missing and the task depends on current code structure, refresh it.
 7. For ambiguous or high-risk changes, confirm important claims directly in source even if the atlas is fresh.

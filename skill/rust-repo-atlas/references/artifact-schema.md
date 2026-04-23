@@ -43,6 +43,9 @@ bundles/<snapshot_id>/
   flows.json
   playbooks.json
   evidence.json
+  crate-graph.json
+  coupling-map.json
+  impact-index.json
   diagnostics.json
   rendered/
     global-model.md
@@ -67,6 +70,12 @@ bundles/<snapshot_id>/
   Task-oriented navigation plans for agents.
 - `evidence.json`
   Claim-to-evidence index grounded in concrete files, symbols, or queries.
+- `crate-graph.json`
+  Cargo-derived workspace dependency and reverse-dependency graph.
+- `coupling-map.json`
+  Candidate coupling clusters and strong crate pairs, with reasons and confidence.
+- `impact-index.json`
+  Per-crate change seeds that describe likely affected reverse dependencies and first paths to verify.
 - `diagnostics.json`
   Coverage, low-confidence zones, tool failures, and portability notes.
 
@@ -77,8 +86,9 @@ Recommended read order:
 1. `overview.md`
 2. `repo-profile.json`
 3. `global-model.json`
-4. `flows.json` and `playbooks.json` for task-specific deepening
-5. `evidence.json` to validate important claims
+4. `crate-graph.json`, `coupling-map.json`, and `impact-index.json` for impact analysis
+5. `flows.json` and `playbooks.json` for task-specific deepening
+6. `evidence.json` to validate important claims
 
 Agents should not start from `evidence.json` unless the task is already narrow and symbol-specific.
 
@@ -304,6 +314,57 @@ Fields:
 | `locator` | no | string | Text locator | `trait Backend` | agent |
 | `source` | yes | enum | Evidence origin | `rust-analyzer` | evaluator |
 | `snapshot_id` | yes | string | Snapshot that produced the evidence | `git:...` | evaluator |
+
+## Schema: `crate-graph.json`
+
+Purpose:
+
+- expose real Cargo workspace dependency edges and reverse-dependency surfaces
+
+Fields:
+
+| Field | Required | Type | Description | Example | Consumer |
+| --- | --- | --- | --- | --- | --- |
+| `nodes` | yes | array | Workspace crate nodes | `[...]` | agent |
+| `edges` | yes | array | Cargo dependency edges between workspace crates | `[...]` | agent |
+| `direct_dependencies` | yes | object | Map of crate to direct workspace dependencies | `{...}` | agent |
+| `reverse_dependencies` | yes | object | Map of crate to direct workspace dependents | `{...}` | agent |
+| `transitive_dependencies` | yes | object | Map of crate to transitive workspace dependencies | `{...}` | agent |
+| `transitive_dependents` | yes | object | Map of crate to transitive workspace dependents | `{...}` | agent |
+| `graph_notes` | no | array | Scope and caution notes | `[...]` | agent |
+
+## Schema: `coupling-map.json`
+
+Purpose:
+
+- summarize candidate module coupling from dependency edges and soft subsystem context
+
+Fields:
+
+| Field | Required | Type | Description | Example | Consumer |
+| --- | --- | --- | --- | --- | --- |
+| `clusters` | yes | array | Candidate subsystem clusters with edge counts and boundary crates | `[...]` | agent |
+| `strong_pairs` | yes | array | High-signal crate pairs with scores, confidence, and reasons | `[...]` | agent |
+| `crate_to_subsystem` | no | object | Crate-to-subsystem lookup | `{...}` | agent |
+| `map_notes` | no | array | Scope and caution notes | `[...]` | agent |
+
+## Schema: `impact-index.json`
+
+Purpose:
+
+- provide per-crate change seeds for estimating likely affected modules
+
+Fields:
+
+| Field | Required | Type | Description | Example | Consumer |
+| --- | --- | --- | --- | --- | --- |
+| `seeds` | yes | array | Per-crate impact entries | `[...]` | agent |
+| `target` | yes | string | Seed crate | `burn-backend` | agent |
+| `likely_affected` | yes | array | Direct and transitive reverse dependencies with reasons | `[...]` | agent |
+| `coupled_neighbors` | no | array | Strong coupling neighbors from `coupling-map.json` | `[...]` | agent |
+| `verify_first` | no | array | Candidate source directories to inspect first | `[...]` | agent |
+| `impact_radius` | no | object | Counts for direct, transitive, and coupled impact surfaces | `{...}` | agent |
+| `index_notes` | no | array | Scope and caution notes | `[...]` | agent |
 
 ## Schema: `diagnostics.json`
 

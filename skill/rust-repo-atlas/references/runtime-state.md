@@ -70,6 +70,9 @@ Only skill-global resources belong outside the repo, such as:
       flows.json
       playbooks.json
       evidence.json
+      crate-graph.json
+      coupling-map.json
+      impact-index.json
       diagnostics.json
       rendered/
   cache/

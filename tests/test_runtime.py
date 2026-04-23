@@ -46,9 +46,19 @@ class AtlasRuntimeRegressionTests(unittest.TestCase):
             "flows.json",
             "playbooks.json",
             "evidence.json",
+            "crate-graph.json",
+            "coupling-map.json",
+            "impact-index.json",
             "diagnostics.json",
         ):
             self.assertTrue((bundle_dir / name).exists(), name)
+
+        crate_graph = load_bundle_json(repo_root, "crate-graph.json")
+        impact_index = load_bundle_json(repo_root, "impact-index.json")
+        self.assertIn({"from": "toy-app", "to": "toy-core", "kind": "normal", "optional": False, "target": "", "features": [], "reason": "workspace dependency"}, crate_graph["edges"])
+        toy_core_seed = next(item for item in impact_index["seeds"] if item["target"] == "toy-core")
+        affected_targets = {item["target"] for item in toy_core_seed["likely_affected"]}
+        self.assertIn("toy-app", affected_targets)
 
     def test_drift_marks_bundle_stale_after_dirty_change(self) -> None:
         repo_root = self.remember(create_generic_workspace_repo(initialize_git=True))
@@ -127,6 +137,14 @@ class AtlasRuntimeRegressionTests(unittest.TestCase):
         flow_ids = {item["id"] for item in flows["flows"]}
         self.assertIn("flow.burn.backend-stack", flow_ids)
         self.assertIn("flow.burn.training-path", flow_ids)
+        crate_graph = load_bundle_json(repo_root, "crate-graph.json")
+        coupling_map = load_bundle_json(repo_root, "coupling-map.json")
+        impact_index = load_bundle_json(repo_root, "impact-index.json")
+        self.assertIn("burn-autodiff", crate_graph["reverse_dependencies"]["burn-backend"])
+        self.assertTrue(any(pair["lhs"] == "burn-autodiff" and pair["rhs"] == "burn-backend" for pair in coupling_map["strong_pairs"]))
+        backend_seed = next(item for item in impact_index["seeds"] if item["target"] == "burn-backend")
+        backend_affected = {item["target"] for item in backend_seed["likely_affected"]}
+        self.assertIn("burn-autodiff", backend_affected)
         self.assertEqual(diagnostics["semantic_inputs"]["repo_specific_enricher"], "burn")
         self.assertEqual(diagnostics["semantic_inputs"]["repo_family"]["name"], "burn")
 
@@ -149,6 +167,12 @@ class AtlasRuntimeRegressionTests(unittest.TestCase):
         flow_ids = {item["id"] for item in flows["flows"]}
         self.assertIn("flow.codex.cli-stack", flow_ids)
         self.assertIn("flow.codex.app-server-stack", flow_ids)
+        crate_graph = load_bundle_json(repo_root, "crate-graph.json")
+        impact_index = load_bundle_json(repo_root, "impact-index.json")
+        self.assertIn("codex-tui", crate_graph["direct_dependencies"]["codex-cli"])
+        core_seed = next(item for item in impact_index["seeds"] if item["target"] == "codex-core")
+        core_affected = {item["target"] for item in core_seed["likely_affected"]}
+        self.assertIn("codex-exec", core_affected)
         self.assertTrue(refresh_result["validation"]["valid"])
         self.assertEqual(diagnostics["semantic_inputs"]["repo_specific_enricher"], "codex")
 

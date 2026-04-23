@@ -99,6 +99,9 @@ name = "toy-app"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies]
+toy-core = { path = "../core" }
+
 [[bin]]
 name = "toy-app"
 path = "src/main.rs"
@@ -190,6 +193,16 @@ Training and inference are first-class surfaces, with dedicated training, datase
         "crates/burn-store": ("burn-store", "lib"),
         "examples/guide": ("guide", "bin"),
     }
+    dependencies = {
+        "crates/burn": ['burn-backend = { path = "../burn-backend" }'],
+        "crates/burn-autodiff": ['burn-backend = { path = "../burn-backend" }'],
+        "crates/burn-fusion": ['burn-backend = { path = "../burn-backend" }'],
+        "crates/burn-train": [
+            'burn-dataset = { path = "../burn-dataset" }',
+            'burn-store = { path = "../burn-store" }',
+        ],
+        "examples/guide": ['burn-train = { path = "../../crates/burn-train" }'],
+    }
     for rel_path, (package_name, kind) in packages.items():
         manifest_lines = [
             "[package]",
@@ -197,6 +210,8 @@ Training and inference are first-class surfaces, with dedicated training, datase
             'version = "0.1.0"',
             'edition = "2021"',
         ]
+        if dependencies.get(rel_path):
+            manifest_lines.extend(["", "[dependencies]", *dependencies[rel_path]])
         if kind == "bin":
             manifest_lines.extend(["", "[[bin]]", f'name = "{package_name}"', 'path = "src/main.rs"'])
             src_file = "main.rs"
@@ -297,6 +312,21 @@ Codex acts as both an MCP client and an experimental MCP server.
         "linux-sandbox": ("codex-linux-sandbox", "lib"),
         "windows-sandbox-rs": ("codex-windows-sandbox", "lib"),
     }
+    dependencies = {
+        "cli": [
+            'codex-tui = { path = "../tui" }',
+            'codex-exec = { path = "../exec" }',
+        ],
+        "tui": ['codex-core = { path = "../core" }'],
+        "exec": ['codex-core = { path = "../core" }'],
+        "app-server": [
+            'codex-core = { path = "../core" }',
+            'codex-protocol = { path = "../protocol" }',
+        ],
+        "codex-mcp": ['codex-core = { path = "../core" }'],
+        "mcp-server": ['codex-mcp = { path = "../codex-mcp" }'],
+        "sandboxing": ['codex-execpolicy = { path = "../execpolicy" }'],
+    }
     for rel_path, (package_name, kind) in packages.items():
         manifest_lines = [
             "[package]",
@@ -304,6 +334,8 @@ Codex acts as both an MCP client and an experimental MCP server.
             'version = "0.1.0"',
             'edition = "2021"',
         ]
+        if dependencies.get(rel_path):
+            manifest_lines.extend(["", "[dependencies]", *dependencies[rel_path]])
         if kind == "bin":
             manifest_lines.extend(["", "[[bin]]", f'name = "{package_name}"', 'path = "src/main.rs"'])
             src_file = "main.rs"
