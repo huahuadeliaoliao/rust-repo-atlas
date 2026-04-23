@@ -1,0 +1,29 @@
+{
+  "task_id": "codex.trace.cli-core-path.001",
+  "condition": "fresh-atlas",
+  "final_answer": "Start from codex-cli as the user-facing Rust entry surface. codex-cli dispatches to codex-tui for the interactive terminal UI and to codex-exec for headless execution, and codex-exec drives codex-core for the shared business logic.",
+  "locations": [
+    "codex-rs/cli/Cargo.toml",
+    "codex-rs/tui/Cargo.toml",
+    "codex-rs/exec/Cargo.toml",
+    "codex-rs/core/Cargo.toml"
+  ],
+  "relations": [
+    {
+      "lhs": "codex-cli",
+      "relation": "dispatches-to",
+      "rhs": "codex-tui"
+    },
+    {
+      "lhs": "codex-cli",
+      "relation": "dispatches-to",
+      "rhs": "codex-exec"
+    },
+    {
+      "lhs": "codex-exec",
+      "relation": "drives",
+      "rhs": "codex-core"
+    }
+  ],
+  "refresh_decision": "reuse"
+}

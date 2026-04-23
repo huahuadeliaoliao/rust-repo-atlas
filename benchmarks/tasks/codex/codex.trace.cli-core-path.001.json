@@ -1,0 +1,40 @@
+{
+  "task_id": "codex.trace.cli-core-path.001",
+  "repo_name": "codex",
+  "repo_snapshot": "latest-including-prerelease",
+  "condition": "fresh-atlas",
+  "prompt": "Trace the main Rust CLI execution path in codex from the user-facing entry surface into the core business logic.",
+  "must_include": [
+    "codex-cli",
+    "codex-tui",
+    "codex-exec",
+    "codex-core"
+  ],
+  "must_not_claim": [
+    "the TypeScript package is the maintained implementation of the runtime"
+  ],
+  "gold_locations": [
+    "codex-rs/cli/Cargo.toml",
+    "codex-rs/tui/Cargo.toml",
+    "codex-rs/exec/Cargo.toml",
+    "codex-rs/core/Cargo.toml"
+  ],
+  "gold_relations": [
+    {
+      "lhs": "codex-cli",
+      "relation": "dispatches-to",
+      "rhs": "codex-tui"
+    },
+    {
+      "lhs": "codex-cli",
+      "relation": "dispatches-to",
+      "rhs": "codex-exec"
+    },
+    {
+      "lhs": "codex-exec",
+      "relation": "drives",
+      "rhs": "codex-core"
+    }
+  ],
+  "expected_refresh_decision": "reuse"
+}

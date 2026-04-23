@@ -1,0 +1,22 @@
+{
+  "task_id": "codex.localize.rust-focus-root.001",
+  "condition": "fresh-atlas",
+  "final_answer": "Treat codex-rs as the Rust workspace root: codex is a mixed-language repository at the repo root, while codex-rs is the primary Rust workspace root that contains the maintained CLI crates.",
+  "locations": [
+    "codex-rs/Cargo.toml",
+    "codex-rs/cli/Cargo.toml"
+  ],
+  "relations": [
+    {
+      "lhs": "codex-rs",
+      "relation": "contains",
+      "rhs": "primary Rust workspace"
+    },
+    {
+      "lhs": "repo root",
+      "relation": "contains",
+      "rhs": "mixed-language context"
+    }
+  ],
+  "refresh_decision": "reuse"
+}

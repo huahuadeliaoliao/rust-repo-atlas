@@ -1,0 +1,16 @@
+{
+  "task_id": "codex.localize.rust-focus-root.001",
+  "condition": "baseline",
+  "final_answer": "The main Rust workspace root is codex-rs, so that is the right place to start reading the Rust code instead of the top-level workspace root.",
+  "locations": [
+    "codex-rs/Cargo.toml"
+  ],
+  "relations": [
+    {
+      "lhs": "codex-rs",
+      "relation": "contains",
+      "rhs": "primary Rust workspace"
+    }
+  ],
+  "refresh_decision": "reuse"
+}

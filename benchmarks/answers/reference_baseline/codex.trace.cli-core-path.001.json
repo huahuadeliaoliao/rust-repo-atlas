@@ -1,0 +1,23 @@
+{
+  "task_id": "codex.trace.cli-core-path.001",
+  "condition": "baseline",
+  "final_answer": "The Rust CLI path seems to begin in codex-cli, then hand off to codex-exec, which in turn drives codex-core.",
+  "locations": [
+    "codex-rs/cli/Cargo.toml",
+    "codex-rs/exec/Cargo.toml",
+    "codex-rs/core/Cargo.toml"
+  ],
+  "relations": [
+    {
+      "lhs": "codex-cli",
+      "relation": "dispatches-to",
+      "rhs": "codex-exec"
+    },
+    {
+      "lhs": "codex-exec",
+      "relation": "drives",
+      "rhs": "codex-core"
+    }
+  ],
+  "refresh_decision": "reuse"
+}

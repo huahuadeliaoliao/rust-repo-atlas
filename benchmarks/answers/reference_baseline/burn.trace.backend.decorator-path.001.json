@@ -1,0 +1,16 @@
+{
+  "task_id": "burn.trace.backend.decorator-path.001",
+  "condition": "baseline",
+  "final_answer": "burn-backend appears to define the main backend abstraction, and burn-autodiff looks like the first place to inspect for gradient-aware behavior.",
+  "locations": [
+    "crates/burn-backend/src/backend/base.rs#Backend"
+  ],
+  "relations": [
+    {
+      "lhs": "Autodiff",
+      "relation": "decorates",
+      "rhs": "Backend"
+    }
+  ],
+  "refresh_decision": "reuse"
+}

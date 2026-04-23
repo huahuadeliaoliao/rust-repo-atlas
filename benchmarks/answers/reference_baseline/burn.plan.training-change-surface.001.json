@@ -1,0 +1,17 @@
+{
+  "task_id": "burn.plan.training-change-surface.001",
+  "condition": "baseline",
+  "final_answer": "I would inspect examples/guide and burn-train first, because the example path likely enters the main training workflow.",
+  "locations": [
+    "examples/guide/Cargo.toml",
+    "crates/burn-train/Cargo.toml"
+  ],
+  "relations": [
+    {
+      "lhs": "examples/guide",
+      "relation": "constructs",
+      "rhs": "burn-train"
+    }
+  ],
+  "refresh_decision": "reuse"
+}

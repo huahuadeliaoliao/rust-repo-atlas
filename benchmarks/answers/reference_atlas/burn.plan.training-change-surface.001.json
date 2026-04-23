@@ -1,0 +1,29 @@
+{
+  "task_id": "burn.plan.training-change-surface.001",
+  "condition": "fresh-atlas",
+  "final_answer": "Start with examples/guide because it shows the end-to-end workflow, then trace into burn-train, which consumes burn-dataset and persists artifacts through burn-store.",
+  "locations": [
+    "examples/guide/Cargo.toml",
+    "crates/burn-train/Cargo.toml",
+    "crates/burn-dataset/Cargo.toml",
+    "crates/burn-store/Cargo.toml"
+  ],
+  "relations": [
+    {
+      "lhs": "examples/guide",
+      "relation": "constructs",
+      "rhs": "burn-train"
+    },
+    {
+      "lhs": "burn-train",
+      "relation": "consumes",
+      "rhs": "burn-dataset"
+    },
+    {
+      "lhs": "burn-train",
+      "relation": "persists-to",
+      "rhs": "burn-store"
+    }
+  ],
+  "refresh_decision": "reuse"
+}

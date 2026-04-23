@@ -1,0 +1,40 @@
+{
+  "task_id": "burn.plan.training-change-surface.001",
+  "repo_name": "burn",
+  "repo_snapshot": "latest-including-prerelease",
+  "condition": "fresh-atlas",
+  "prompt": "If you need to change the training workflow in burn, which subsystem path should you inspect first?",
+  "must_include": [
+    "examples/guide",
+    "burn-train",
+    "burn-dataset",
+    "burn-store"
+  ],
+  "must_not_claim": [
+    "examples are unrelated to the core workflow"
+  ],
+  "gold_locations": [
+    "examples/guide/Cargo.toml",
+    "crates/burn-train/Cargo.toml",
+    "crates/burn-dataset/Cargo.toml",
+    "crates/burn-store/Cargo.toml"
+  ],
+  "gold_relations": [
+    {
+      "lhs": "examples/guide",
+      "relation": "constructs",
+      "rhs": "burn-train"
+    },
+    {
+      "lhs": "burn-train",
+      "relation": "consumes",
+      "rhs": "burn-dataset"
+    },
+    {
+      "lhs": "burn-train",
+      "relation": "persists-to",
+      "rhs": "burn-store"
+    }
+  ],
+  "expected_refresh_decision": "reuse"
+}

@@ -1,0 +1,22 @@
+{
+  "task_id": "burn.trace.backend.decorator-path.001",
+  "condition": "fresh-atlas",
+  "final_answer": "burn uses backend composition across multiple crates: burn-backend defines the core interface, burn-autodiff decorates a backend with autodiff support, and burn-fusion decorates a backend with fusion-oriented execution.",
+  "locations": [
+    "crates/burn-backend/src/backend/base.rs#Backend",
+    "crates/burn-autodiff/src/backend.rs#Autodiff"
+  ],
+  "relations": [
+    {
+      "lhs": "Autodiff",
+      "relation": "decorates",
+      "rhs": "Backend"
+    },
+    {
+      "lhs": "Fusion",
+      "relation": "decorates",
+      "rhs": "Backend"
+    }
+  ],
+  "refresh_decision": "reuse"
+}

@@ -1,0 +1,32 @@
+{
+  "task_id": "codex.localize.rust-focus-root.001",
+  "repo_name": "codex",
+  "repo_snapshot": "latest-including-prerelease",
+  "condition": "fresh-atlas",
+  "prompt": "Identify the main Rust workspace inside codex and explain why an agent should treat it as the Rust focus root.",
+  "must_include": [
+    "codex-rs",
+    "mixed-language repository",
+    "workspace root"
+  ],
+  "must_not_claim": [
+    "the repository root itself is the only Rust workspace"
+  ],
+  "gold_locations": [
+    "codex-rs/Cargo.toml",
+    "codex-rs/cli/Cargo.toml"
+  ],
+  "gold_relations": [
+    {
+      "lhs": "codex-rs",
+      "relation": "contains",
+      "rhs": "primary Rust workspace"
+    },
+    {
+      "lhs": "repo root",
+      "relation": "contains",
+      "rhs": "mixed-language context"
+    }
+  ],
+  "expected_refresh_decision": "reuse"
+}

@@ -1,0 +1,282 @@
+{
+  "label": "reference_baseline",
+  "tasks_dir": "/Users/florianliao/Documents/Playground/rust-repo-atlas/benchmarks/tasks",
+  "answers_dir": "/Users/florianliao/Documents/Playground/rust-repo-atlas/benchmarks/answers/reference_baseline",
+  "task_count": 4,
+  "result_count": 4,
+  "task_coverage": 1.0,
+  "missing_task_ids": [],
+  "average_automatic_score": 0.7416666666666667,
+  "average_required_mentions_recall": 0.6458333333333333,
+  "average_localization_accuracy": 0.5625,
+  "average_relation_accuracy": 0.5,
+  "average_refresh_discipline": 1.0,
+  "repo_summary": [
+    {
+      "repo_name": "burn",
+      "result_count": 2,
+      "average_automatic_score": 0.7,
+      "average_localization_accuracy": 0.5,
+      "average_relation_accuracy": 0.41666666666666663
+    },
+    {
+      "repo_name": "codex",
+      "result_count": 2,
+      "average_automatic_score": 0.7833333333333333,
+      "average_localization_accuracy": 0.625,
+      "average_relation_accuracy": 0.5833333333333333
+    }
+  ],
+  "task_summary": [
+    {
+      "task_id": "burn.plan.training-change-surface.001",
+      "repo_name": "burn",
+      "automatic_score": 0.6666666666666667,
+      "required_mentions_recall": 0.5,
+      "localization_accuracy": 0.5,
+      "relation_accuracy": 0.3333333333333333,
+      "refresh_discipline": 1.0,
+      "forbidden_mentions_violations": 0
+    },
+    {
+      "task_id": "burn.trace.backend.decorator-path.001",
+      "repo_name": "burn",
+      "automatic_score": 0.7333333333333333,
+      "required_mentions_recall": 0.6666666666666666,
+      "localization_accuracy": 0.5,
+      "relation_accuracy": 0.5,
+      "refresh_discipline": 1.0,
+      "forbidden_mentions_violations": 0
+    },
+    {
+      "task_id": "codex.localize.rust-focus-root.001",
+      "repo_name": "codex",
+      "automatic_score": 0.7333333333333333,
+      "required_mentions_recall": 0.6666666666666666,
+      "localization_accuracy": 0.5,
+      "relation_accuracy": 0.5,
+      "refresh_discipline": 1.0,
+      "forbidden_mentions_violations": 0
+    },
+    {
+      "task_id": "codex.trace.cli-core-path.001",
+      "repo_name": "codex",
+      "automatic_score": 0.8333333333333334,
+      "required_mentions_recall": 0.75,
+      "localization_accuracy": 0.75,
+      "relation_accuracy": 0.6666666666666666,
+      "refresh_discipline": 1.0,
+      "forbidden_mentions_violations": 0
+    }
+  ],
+  "results": [
+    {
+      "task_id": "burn.plan.training-change-surface.001",
+      "repo_name": "burn",
+      "task_condition": "fresh-atlas",
+      "answer_condition": "baseline",
+      "answer_label": "reference_baseline",
+      "metrics": {
+        "required_mentions_recall": 0.5,
+        "forbidden_mentions_violations": 0,
+        "localization_accuracy": 0.5,
+        "relation_accuracy": 0.3333333333333333,
+        "refresh_discipline": 1.0,
+        "automatic_score": 0.6666666666666667
+      },
+      "details": {
+        "matched_required_mentions": [
+          "examples/guide",
+          "burn-train"
+        ],
+        "missing_required_mentions": [
+          "burn-dataset",
+          "burn-store"
+        ],
+        "forbidden_hits": [],
+        "matched_locations": [
+          "examples/guide/Cargo.toml",
+          "crates/burn-train/Cargo.toml"
+        ],
+        "missed_locations": [
+          "crates/burn-dataset/Cargo.toml",
+          "crates/burn-store/Cargo.toml"
+        ],
+        "matched_relations": [
+          {
+            "lhs": "examples/guide",
+            "relation": "constructs",
+            "rhs": "burn-train"
+          }
+        ],
+        "missed_relations": [
+          {
+            "lhs": "burn-train",
+            "relation": "consumes",
+            "rhs": "burn-dataset"
+          },
+          {
+            "lhs": "burn-train",
+            "relation": "persists-to",
+            "rhs": "burn-store"
+          }
+        ],
+        "expected_refresh_decision": "reuse",
+        "actual_refresh_decision": "reuse"
+      }
+    },
+    {
+      "task_id": "burn.trace.backend.decorator-path.001",
+      "repo_name": "burn",
+      "task_condition": "fresh-atlas",
+      "answer_condition": "baseline",
+      "answer_label": "reference_baseline",
+      "metrics": {
+        "required_mentions_recall": 0.6666666666666666,
+        "forbidden_mentions_violations": 0,
+        "localization_accuracy": 0.5,
+        "relation_accuracy": 0.5,
+        "refresh_discipline": 1.0,
+        "automatic_score": 0.7333333333333333
+      },
+      "details": {
+        "matched_required_mentions": [
+          "burn-backend",
+          "burn-autodiff"
+        ],
+        "missing_required_mentions": [
+          "burn-fusion"
+        ],
+        "forbidden_hits": [],
+        "matched_locations": [
+          "crates/burn-backend/src/backend/base.rs#Backend"
+        ],
+        "missed_locations": [
+          "crates/burn-autodiff/src/backend.rs#Autodiff"
+        ],
+        "matched_relations": [
+          {
+            "lhs": "Autodiff",
+            "relation": "decorates",
+            "rhs": "Backend"
+          }
+        ],
+        "missed_relations": [
+          {
+            "lhs": "Fusion",
+            "relation": "decorates",
+            "rhs": "Backend"
+          }
+        ],
+        "expected_refresh_decision": "reuse",
+        "actual_refresh_decision": "reuse"
+      }
+    },
+    {
+      "task_id": "codex.localize.rust-focus-root.001",
+      "repo_name": "codex",
+      "task_condition": "fresh-atlas",
+      "answer_condition": "baseline",
+      "answer_label": "reference_baseline",
+      "metrics": {
+        "required_mentions_recall": 0.6666666666666666,
+        "forbidden_mentions_violations": 0,
+        "localization_accuracy": 0.5,
+        "relation_accuracy": 0.5,
+        "refresh_discipline": 1.0,
+        "automatic_score": 0.7333333333333333
+      },
+      "details": {
+        "matched_required_mentions": [
+          "codex-rs",
+          "workspace root"
+        ],
+        "missing_required_mentions": [
+          "mixed-language repository"
+        ],
+        "forbidden_hits": [],
+        "matched_locations": [
+          "codex-rs/Cargo.toml"
+        ],
+        "missed_locations": [
+          "codex-rs/cli/Cargo.toml"
+        ],
+        "matched_relations": [
+          {
+            "lhs": "codex-rs",
+            "relation": "contains",
+            "rhs": "primary Rust workspace"
+          }
+        ],
+        "missed_relations": [
+          {
+            "lhs": "repo root",
+            "relation": "contains",
+            "rhs": "mixed-language context"
+          }
+        ],
+        "expected_refresh_decision": "reuse",
+        "actual_refresh_decision": "reuse"
+      }
+    },
+    {
+      "task_id": "codex.trace.cli-core-path.001",
+      "repo_name": "codex",
+      "task_condition": "fresh-atlas",
+      "answer_condition": "baseline",
+      "answer_label": "reference_baseline",
+      "metrics": {
+        "required_mentions_recall": 0.75,
+        "forbidden_mentions_violations": 0,
+        "localization_accuracy": 0.75,
+        "relation_accuracy": 0.6666666666666666,
+        "refresh_discipline": 1.0,
+        "automatic_score": 0.8333333333333334
+      },
+      "details": {
+        "matched_required_mentions": [
+          "codex-cli",
+          "codex-exec",
+          "codex-core"
+        ],
+        "missing_required_mentions": [
+          "codex-tui"
+        ],
+        "forbidden_hits": [],
+        "matched_locations": [
+          "codex-rs/cli/Cargo.toml",
+          "codex-rs/exec/Cargo.toml",
+          "codex-rs/core/Cargo.toml"
+        ],
+        "missed_locations": [
+          "codex-rs/tui/Cargo.toml"
+        ],
+        "matched_relations": [
+          {
+            "lhs": "codex-cli",
+            "relation": "dispatches-to",
+            "rhs": "codex-exec"
+          },
+          {
+            "lhs": "codex-exec",
+            "relation": "drives",
+            "rhs": "codex-core"
+          }
+        ],
+        "missed_relations": [
+          {
+            "lhs": "codex-cli",
+            "relation": "dispatches-to",
+            "rhs": "codex-tui"
+          }
+        ],
+        "expected_refresh_decision": "reuse",
+        "actual_refresh_decision": "reuse"
+      }
+    }
+  ],
+  "written_outputs": {
+    "json_path": "/Users/florianliao/Documents/Playground/rust-repo-atlas/benchmarks/reports/reference_baseline.json",
+    "markdown_path": "/Users/florianliao/Documents/Playground/rust-repo-atlas/benchmarks/reports/reference_baseline.md"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "task_id": "burn.trace.backend.decorator-path.001",
+  "repo_name": "burn",
+  "repo_snapshot": "latest-including-prerelease",
+  "condition": "fresh-atlas",
+  "prompt": "Explain how backend composition works in burn and identify the main crates involved.",
+  "must_include": [
+    "burn-backend",
+    "burn-autodiff",
+    "burn-fusion"
+  ],
+  "must_not_claim": [
+    "single monolithic crate"
+  ],
+  "gold_locations": [
+    "crates/burn-backend/src/backend/base.rs#Backend",
+    "crates/burn-autodiff/src/backend.rs#Autodiff"
+  ],
+  "gold_relations": [
+    {
+      "lhs": "Autodiff",
+      "relation": "decorates",
+      "rhs": "Backend"
+    },
+    {
+      "lhs": "Fusion",
+      "relation": "decorates",
+      "rhs": "Backend"
+    }
+  ],
+  "expected_refresh_decision": "reuse"
+}
